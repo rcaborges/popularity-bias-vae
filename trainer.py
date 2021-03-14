@@ -62,16 +62,12 @@ class Trainer(object):
         self.total_anneal_steps = total_anneal_steps
         self.anneal_cap = anneal_cap
 
-        self.n20_all = []
-        self.n20_max_va, self.n100_max_va, self.r20_max_va, self.r50_max_va = 0, 0, 0, 0
-        self.n20_max_te, self.n100_max_te, self.r20_max_te, self.r50_max_te = 0, 0, 0, 0
 
-        self.ndcg, self.recall, self.ash, self.amt, self.alt = [], [], [], [], []
+        self.ndcg, self.recall = [], []
         #self.ufair, self.ndcg_quality = [],[]
         self.loss, self.kl, self.posb, self.popb = [],[],[],[]
         self.att, self.rel, self.cnt, self.pcount = [],[],[],[]
         
-        #self.count_weight = torch.from_numpy((np.ones(item_mapper.shape[0])-(item_mapper.sort_values(by='new_movieId')['counts'].values))).type('torch.FloatTensor')
         # sanity check
         #self.count_weight = torch.from_numpy(np.ones(item_mapper.shape[0])).type('torch.FloatTensor')
 
@@ -86,7 +82,6 @@ class Trainer(object):
         end = time.time()
 
         n10_list, n100_list, r10_list, r100_list = [], [], [], []
-        ash_list, amt_list, alt_list, udx_list  = [], [], [], []
         preds = []
         embs_list = []
         att_round, rel_round, cnt_round, pcount_round = [], [], [], []
@@ -108,10 +103,7 @@ class Trainer(object):
             end = time.time()
 
             with torch.no_grad():
-                if self.model.__class__.__name__ == 'MultiVAE':
-                    logits, KL, mu_q, std_q, epsilon, sampled_z = self.model.forward(data_tr, prof)
-                else:
-                    logits = self.model.forward(data_tr)
+                logits, KL, mu_q, std_q, epsilon, sampled_z = self.model.forward(data_tr, prof)
                 #POP
                 #pop_values = self.item_mapper.sort_values(['new_movieId']).counts.values
                 #pop_values = np.tile(pop_values, (logits.shape[0],1)).astype(np.float)
@@ -120,31 +112,17 @@ class Trainer(object):
                 pred_val = logits.cpu().detach().numpy()
                 pred_val[data_tr.cpu().detach().numpy().nonzero()] = -np.inf
 
-                ## POP
-                ##print(self.item_mapper.sort_values(['counts'], ascending=True))
-                #pred_val = self.item_mapper.counts.values
-                #pred_val = np.tile(pred_val, (logits.shape[0],1)).astype(np.float)
-                #pred_val[data_tr.cpu().detach().numpy().nonzero()] = -np.inf
-                #
-                ##popsort = self.item_mapper.sort_values(['counts'], ascending=True).counts.values
-                ##popsort = np.tile(popsort, (logits.shape[0],1)).astype(np.float)
-                #logits = torch.tensor(pred_val).cuda()
-
                 data_te_csr = sparse.csr_matrix(data_te.numpy())
                 n10_list.append(utils.NDCG_binary_at_k_batch(pred_val, data_te_csr, k=10))
                 n100_list.append(utils.NDCG_binary_at_k_batch(pred_val, data_te_csr, k=100))
                 r10_list.append(utils.Recall_at_k_batch(pred_val, data_te_csr, k=10))
                 r100_list.append(utils.Recall_at_k_batch(pred_val, data_te_csr, k=100))
 
-                ash_list.append(utils.Apt_at_k_batch(pred_val, data_te.numpy(), self.item_mapper, k=k, tail_number=0.0))
-                amt_list.append(utils.Apt_at_k_batch(pred_val, data_te.numpy(), self.item_mapper, k=k, tail_number=1.0))
-                alt_list.append(utils.Apt_at_k_batch(pred_val, data_te.numpy(), self.item_mapper, k=k, tail_number=2.0))
-             
                 #cnt, pcount = utils.att_rel(f.softmax(logits,dim=1), data_tr, self.count_norm, self.play_count, self.cuda, k=k)
                 cnt, pcount = utils.att_rel(logits, data_tr, self.count_norm, self.play_count, self.cuda, k=k)
                 pcount_round.append(pcount)
                 cnt_round.append(cnt)
-                udx_list.append(uindex + batch_idx*pred_val.shape[0])
+                #udx_list.append(uindex + batch_idx*pred_val.shape[0])
  
                 embs_list.append(mu_q.cpu().detach().numpy())
 
@@ -152,11 +130,7 @@ class Trainer(object):
         n100_list = np.concatenate(n100_list, axis=0)
         r10_list = np.concatenate(r10_list, axis=0)
         r100_list = np.concatenate(r100_list, axis=0)
-        ash_list = np.concatenate(ash_list, axis=0)
-        amt_list = np.concatenate(amt_list, axis=0)
-        alt_list = np.concatenate(alt_list, axis=0)
         cnt_round = np.concatenate(cnt_round, axis=0)
-        udx_list = np.concatenate(udx_list, axis=0)
         pcount_round = np.concatenate(pcount_round, axis=0)
         embs_list = np.concatenate(embs_list, axis=0)
 
@@ -165,9 +139,6 @@ class Trainer(object):
 
             self.ndcg.append(np.mean(n100_list))
             self.recall.append(np.mean(r100_list))
-            self.ash.append(np.mean(ash_list))
-            self.amt.append(np.mean(amt_list))
-            self.alt.append(np.mean(alt_list))
             self.cnt.append(cnt_round)
             self.pcount.append(np.mean(np.sum(cnt_round, axis=1)))
             popb = utils.calc_pop_bias(cnt_round)
@@ -204,20 +175,20 @@ class Trainer(object):
             print('\n' + ",\n".join(metrics))
             print("PLAY-COUNTS@{},{}".format(k,np.mean(np.sum(cnt_round, axis=1))))
 
-            print(np.array(udx_list).shape)
-            print(np.array(n100_list).shape,np.array(r100_list).shape)
-            print(np.array(popb).shape,np.array(np.sum(cnt_round, axis=1)).shape)
-            df = pd.DataFrame()
-            df['uid'] = udx_list
-            df['recall'] = r100_list
-            df['ndcg'] = n100_list
-            df['popb'] = popb
-            #df['embs'] = embs_list
-            #print(len(n100_list), len(demo_list))
-            df['pcount'] = np.sum(cnt_round, axis=1)
-            df.to_csv('result_prof.csv', index=False)
+            #print(np.array(udx_list).shape)
+            #print(np.array(n100_list).shape,np.array(r100_list).shape)
+            #print(np.array(popb).shape,np.array(np.sum(cnt_round, axis=1)).shape)
+            #df = pd.DataFrame()
+            #df['uid'] = udx_list
+            #df['recall'] = r100_list
+            #df['ndcg'] = n100_list
+            #df['popb'] = popb
+            ##df['embs'] = embs_list
+            ##print(len(n100_list), len(demo_list))
+            #df['pcount'] = np.sum(cnt_round, axis=1)
+            #df.to_csv('result_prof.csv', index=False)
         
-            np.save('embs.npy', embs_list)
+            #np.save('embs.npy', embs_list)
 
         self.model.train()
 
@@ -270,10 +241,6 @@ class Trainer(object):
             self.model.zero_grad()
             loss.backward()
             self.optim.step()
-
-            #if self.interval_validate > 0 and (self.step + 1) % self.interval_validate == 0:
-            #    print("CALLING VALID", cmd, self.step, )
-            #    self.validate()
 
 
     def func_powerlaw_trunc(self, x, a, b, c):

@@ -38,6 +38,7 @@ def main():
     parser.add_argument('--n_items', type=int, default=1, help='n items')
     parser.add_argument('--conditioned_on', type=str, default=None, help='conditioned on user profile (g: gender, a: age, c: country) for Last.fm')
     parser.add_argument('--checkpoint_dir', type=str, default='./checkpoint/', help='checkpoints directory')
+    parser.add_argument('--load_model', type=str, default='./checkpoint/vae.pt', help='path to the model to be loaded')
     parser.add_argument('--checkpoint_freq', type=int, default=1, help='checkpoint save frequency')
     parser.add_argument('--valid_freq', type=int, default=1, help='validation frequency in training')
     parser.add_argument('-c', '--config', type=int, default=1, choices=configurations.keys(),
@@ -95,16 +96,12 @@ def main():
     args.n_items = len(unique_sid)
 
     DS = dataset.MovieLensDataset if args.dataset_name == 'ml-20m' else dataset.NetflixDataset
-    #if args.cmd == 'train':
-    #dt = DS(root, 'data_csr.pkl', split='train', upper=args.upper_train, conditioned_on=args.conditioned_on)
     dt = DS(root, split='train', upper=args.upper_train, conditioned_on=args.conditioned_on)
     train_loader = torch.utils.data.DataLoader(dt, batch_size=args.train_batch_size, shuffle=True, **kwargs)
 
-    #dt = DS(root, 'data_csr.pkl', split='valid', upper=args.upper_valid, conditioned_on=args.conditioned_on)
     dt = DS(root,split='valid', upper=args.upper_valid, conditioned_on=args.conditioned_on)
     valid_loader = torch.utils.data.DataLoader(dt, batch_size=args.valid_batch_size, shuffle=False, **kwargs)
 
-    #dt = DS(root, 'data_csr.pkl', split='test', upper=args.upper_test, conditioned_on=args.conditioned_on)
     dt = DS(root, split='test', upper=args.upper_test, conditioned_on=args.conditioned_on)
     test_loader = torch.utils.data.DataLoader(dt, batch_size=args.test_batch_size, shuffle=False, **kwargs)
 
@@ -123,8 +120,7 @@ def main():
                              q_dims=[args.n_items, 600, 200], p_dims=[200, 600, args.n_items], 
                              n_conditioned=n_conditioned)
     elif args.cmd == 'test':
-        #with open('checkpoint/vae.pt', 'rb') as f: model = torch.load(f)
-        with open('checkpoint/ml-20m_vae_False_0.0.pt', 'rb') as f: model = torch.load(f)
+        with open(args.load_model, 'rb') as f: model = torch.load(f)
     print(model)
 
     start_epoch = 0
@@ -134,7 +130,6 @@ def main():
         model = model.cuda()
 
     # 3. optimizer
-    #if args.cmd == 'train':
     optim = torch.optim.Adam(
         [
             {'params': list(utils.get_parameters(model, bias=False)), 'weight_decay': 0.0},
