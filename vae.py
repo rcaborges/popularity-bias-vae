@@ -58,23 +58,23 @@ class Decoder(nn.Module):
         return x
 
 class MultiVAE(nn.Module):
-    def __init__(self, cuda2=True, weight_decay=0.0, dropout_p=0.5, q_dims=[20108, 600, 200], p_dims=[200, 600, 20108], n_conditioned=0):
+    def __init__(self, cuda2=True, weight_decay=0.0, dropout_p=0.5, q_dims=[20108, 600, 200], p_dims=[200, 600, 20108]):
         super(MultiVAE, self).__init__()
         self.cuda2 = cuda2
         self.weight_decay = weight_decay
-        self.n_conditioned = n_conditioned
+        #self.n_conditioned = n_conditioned
         self.q_dims = q_dims
         self.p_dims = p_dims
-        self.q_dims[0] += self.n_conditioned
-        self.p_dims[0] += self.n_conditioned
+        #self.q_dims[0] += self.n_conditioned
+        #self.p_dims[0] += self.n_conditioned
 
         self.encoder = Encoder(None, dropout_p=dropout_p, q_dims=self.q_dims)
         self.decoder = Decoder(None, p_dims=self.p_dims)
 
-    def forward(self, x, c):
+    def forward(self, x):
         x = f.normalize(x, p=2, dim=1)
-        if self.n_conditioned > 0:
-            x = torch.cat((x, c), dim=1)
+        #if self.n_conditioned > 0:
+        #    x = torch.cat((x, c), dim=1)
 
         mu_q, logvar_q = self.encoder.forward(x)
         std_q = torch.exp(0.5 * logvar_q)
@@ -91,8 +91,9 @@ class MultiVAE(nn.Module):
             epsilon = torch.randn_like(std_q, requires_grad=False)
             sampled_z = mu_q + epsilon * std_q
 
-        if self.n_conditioned > 0:
-            sampled_z = torch.cat((sampled_z, c), dim=1)
+        #if self.n_conditioned > 0:
+        #    sampled_z = torch.cat((sampled_z, c), dim=1)
+        
         logits = self.decoder.forward(sampled_z)
 
         return logits, KL, mu_q, std_q, epsilon, sampled_z

@@ -36,7 +36,6 @@ def main():
     parser.add_argument('--dataset_name', type=str, default='ml-20m', help='camera model type', choices=['ml-20m', 'netflix'])
     parser.add_argument('--processed_dir', type=str, default='../data/ml-20m/pro_sg/', help='dataset directory')
     parser.add_argument('--n_items', type=int, default=1, help='n items')
-    parser.add_argument('--conditioned_on', type=str, default=None, help='conditioned on user profile (g: gender, a: age, c: country) for Last.fm')
     parser.add_argument('--checkpoint_dir', type=str, default='./checkpoint/', help='checkpoints directory')
     parser.add_argument('--load_model', type=str, default='./checkpoint/vae.pt', help='path to the model to be loaded')
     parser.add_argument('--checkpoint_freq', type=int, default=1, help='checkpoint save frequency')
@@ -96,29 +95,19 @@ def main():
     args.n_items = len(unique_sid)
 
     DS = dataset.MovieLensDataset if args.dataset_name == 'ml-20m' else dataset.NetflixDataset
-    dt = DS(root, split='train', upper=args.upper_train, conditioned_on=args.conditioned_on)
+    dt = DS(root, split='train', upper=args.upper_train)
     train_loader = torch.utils.data.DataLoader(dt, batch_size=args.train_batch_size, shuffle=True, **kwargs)
 
-    dt = DS(root,split='valid', upper=args.upper_valid, conditioned_on=args.conditioned_on)
+    dt = DS(root,split='valid', upper=args.upper_valid)
     valid_loader = torch.utils.data.DataLoader(dt, batch_size=args.valid_batch_size, shuffle=False, **kwargs)
 
-    dt = DS(root, split='test', upper=args.upper_test, conditioned_on=args.conditioned_on)
+    dt = DS(root, split='test', upper=args.upper_test)
     test_loader = torch.utils.data.DataLoader(dt, batch_size=args.test_batch_size, shuffle=False, **kwargs)
 
     # 2. model
-    n_conditioned = 0
-    if args.conditioned_on: # used for conditional VAE
-        if 'g' in args.conditioned_on:
-            n_conditioned += 3
-        if 'a' in args.conditioned_on:
-            n_conditioned += 10
-        if 'c' in args.conditioned_on:
-            n_conditioned += 17
-
     if args.cmd == 'train':
         model = MultiVAE(dropout_p=args.dropout_p, weight_decay=0.0, cuda2=cuda,
-                             q_dims=[args.n_items, 600, 200], p_dims=[200, 600, args.n_items], 
-                             n_conditioned=n_conditioned)
+                             q_dims=[args.n_items, 600, 200], p_dims=[200, 600, args.n_items])
     elif args.cmd == 'test':
         with open(args.load_model, 'rb') as f: model = torch.load(f)
     print(model)

@@ -64,7 +64,7 @@ class MovieLensDataset(data.Dataset):
         return self.n_users
 
     def __getitem__(self, index):
-        prof = np.zeros(1)
+        #prof = np.zeros(1)
         if self.split == 'train':
             data_tr, data_te = self.train_data[index], np.zeros(1)
         elif self.split == 'valid':
@@ -82,24 +82,19 @@ class MovieLensDataset(data.Dataset):
         data_te = data_te.astype('float32')
         data_te = data_te[0]
 
-        return data_tr, data_te, prof, index
+        return data_tr, data_te, index
 
 
 class NetflixDataset(data.Dataset):
 
-    def __init__(self, root, fold_in=True, split='train', conditioned_on=None, upper=-1):
+    def __init__(self, root, fold_in=True, split='train', upper=-1):
 
         super(NetflixDataset, self).__init__()
         assert os.path.exists(root), "root: {} not found.".format(root)
         self.root = root
-        #assert len(img_files) > 0
-        #self.img_files = img_files
         assert os.path.exists(root), "root: {} not found.".format(root)
 
         assert split in ['test', 'inference', 'train', 'valid']
-        #fname = os.path.join(root, self.img_files)
-
-        #self.train_data, self.vad_data_tr, self.vad_data_te, self.test_data_tr, self.test_data_te = utils.load_weights_pkl(fname)
 
         out_data_dir = root
 
@@ -136,7 +131,7 @@ class NetflixDataset(data.Dataset):
         return self.n_users
 
     def __getitem__(self, index):
-        prof = np.zeros(1)
+        #prof = np.zeros(1)
         if self.split == 'train':
             data_tr, data_te = self.train_data[index], np.zeros(1)
         elif self.split == 'valid':
@@ -154,4 +149,4 @@ class NetflixDataset(data.Dataset):
         data_te = data_te.astype('float32')
         data_te = data_te[0]
 
-        return data_tr, data_te, prof
+        return data_tr, data_te

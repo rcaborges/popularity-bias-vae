@@ -64,7 +64,6 @@ class Trainer(object):
 
 
         self.ndcg, self.recall = [], []
-        #self.ufair, self.ndcg_quality = [],[]
         self.loss, self.kl, self.posb, self.popb = [],[],[],[]
         self.att, self.rel, self.cnt, self.pcount = [],[],[],[]
         
@@ -89,21 +88,19 @@ class Trainer(object):
         loader_ = self.valid_loader if cmd == 'valid' else self.test_loader
 
         step_counter = 0
-        for batch_idx, (data_tr, data_te, prof, uindex) in tqdm.tqdm(enumerate(loader_), total=len(loader_),
+        for batch_idx, (data_tr, data_te, uindex) in tqdm.tqdm(enumerate(loader_), total=len(loader_),
                                    desc='{} check epoch={}, len={}'.format('Valid' if cmd == 'valid' else 'Test',
                                                                self.epoch, len(loader_)), ncols=80, leave=False):
             step_counter = step_counter + 1
 
             if self.cuda:
                 data_tr = data_tr.cuda()
-                prof = prof.cuda()
             data_tr = Variable(data_tr)
-            prof = Variable(prof)
             data_time.update(time.time() - end)
             end = time.time()
 
             with torch.no_grad():
-                logits, KL, mu_q, std_q, epsilon, sampled_z = self.model.forward(data_tr, prof)
+                logits, KL, mu_q, std_q, epsilon, sampled_z = self.model.forward(data_tr)
                 #POP
                 #pop_values = self.item_mapper.sort_values(['new_movieId']).counts.values
                 #pop_values = np.tile(pop_values, (logits.shape[0],1)).astype(np.float)
@@ -200,19 +197,19 @@ class Trainer(object):
         self.model.train()
 
         end = time.time()
-        for batch_idx, (data_tr, data_te, prof, uidx) in tqdm.tqdm(enumerate(self.train_loader), total=len(self.train_loader),
+        for batch_idx, (data_tr, data_te, uidx) in tqdm.tqdm(enumerate(self.train_loader), total=len(self.train_loader),
                 desc='Train check epoch={}, len={}'.format(self.epoch, len(self.train_loader)), ncols=80, leave=False):
             self.step += 1
 
             if self.cuda:
                 data_tr = data_tr.cuda()
-                prof = prof.cuda()
+                #prof = prof.cuda()
             data_tr = Variable(data_tr)
-            prof = Variable(prof)
+            #prof = Variable(prof)
             data_time.update(time.time() - end)
             end = time.time()
 
-            logits, KL, mu_q, std_q, epsilon, sampled_z = self.model.forward(data_tr, prof)
+            logits, KL, mu_q, std_q, epsilon, sampled_z = self.model.forward(data_tr)
 
             #log_soft_var = log_softmax_var * rep_tensor
 
