@@ -20,7 +20,7 @@ The code presented here was adapted from [this one](https://github.com/cydonia99
 > isbn = {9781450381048}, \
 > publisher = {Association for Computing Machinery}, \
 > address = {New York, NY, USA}, \
-> url = {https://doi.org/10.1145/3412841.3442123}, \
+> url = { https://doi.org/10.1145/3412841.3442123 }, \
 > doi = {10.1145/3412841.3442123}, \
 > abstract = {Recommender systems are usually susceptible to Popularity Bias, in the sense that their training procedures have major influence of popular items. This promotes a long term unfairness: models end up adjusted to common options, associated to few popular items, and with restricted knowledge about unpopular ones. We propose a method that penalizes scores given to items according to historical popularity for mitigating the bias and promoting diversity in the results. A parameter is available for controlling the weight of the penalty, to be decided according to the necessity in the application. Our method is based on Variational Autoencoders, considered today as the state-of-the-art method for the task of Collaborative Filtering, and the price for removing the bias is paid by having its accuracy and ranking metrics reduced. We managed to reduce the bias by 8% while reducing accuracy in 3% in a movie consumption dataset.}, \
 > booktitle = {Proceedings of the 36th Annual ACM Symposium on Applied Computing}, \
